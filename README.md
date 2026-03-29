@@ -73,10 +73,8 @@ Open `http://localhost:5000`, sign up to create your company + admin account, th
 ├── admin.py                # Admin routes
 ├── approval_engine.py      # Core approval state machine
 ├── currency.py             # Currency conversion helpers
-├── index.html              # Login / Signup page
-├── dashboard_employee.html
-├── dashboard_manager.html
-├── dashboard_admin.html
+├── templates
+  ├── index.html            # Frontend
 └── requirements.txt
 ```
 
