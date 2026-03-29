@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ExpenseFlow — Reimbursement Management</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --primary: #1a56db;
+  --primary-light: #3b82f6;
+  --primary-dark: #1e40af;
+  --primary-bg: #eff6ff;
+  --green: #059669;
+  --green-light: #d1fae5;
+  --amber: #d97706;
+  --amber-light: #fef3c7;
+  --red: #dc2626;
+  --red-light: #fee2e2;
+  --purple: #7c3aed;
+  --purple-light: #ede9fe;
+  --bg: #f0f4fa;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --border-dark: #cbd5e1;
+  --text: #0f172a;
+  --text-2: #475569;
+  --text-3: #94a3b8;
+  --sidebar-bg: #0f172a;
+  --sidebar-text: #94a3b8;
+  --sidebar-active: #1a56db;
+  --radius: 12px;
+  --radius-lg: 16px;
+  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.04);
+  --shadow-md: 0 4px 24px rgba(0,0,0,.10);
+  --shadow-lg: 0 8px 40px rgba(0,0,0,.14);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); font-size: 15px; }
+h1,h2,h3,h4,h5 { font-family: 'Syne', sans-serif; }
+
+/* ── UTILITY ── */
+.hidden { display: none !important; }
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; }
+.badge-pending  { background: var(--amber-light); color: var(--amber); }
+.badge-approved { background: var(--green-light);  color: var(--green); }
+.badge-rejected { background: var(--red-light);    color: var(--red); }
+.badge-info     { background: var(--primary-bg);   color: var(--primary); }
+.badge-purple   { background: var(--purple-light);  color: var(--purple); }
+.btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 20px; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all .18s; }
+.btn-primary   { background: var(--primary); color: #fff; }
+.btn-primary:hover  { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,86,219,.3); }
+.btn-secondary { background: var(--surface); color: var(--text); border: 1.5px solid var(--border-dark); }
+.btn-secondary:hover { background: var(--bg); }
+.btn-green { background: var(--green); color: #fff; }
+.btn-green:hover { background: #047857; }
+.btn-red { background: var(--red); color: #fff; }
+.btn-red:hover { background: #b91c1c; }
+.btn-sm { padding: 6px 14px; font-size: 13px; }
+.btn-icon { padding: 8px; border-radius: 8px; background: var(--surface); border: 1.5px solid var(--border); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all .15s; }
+.btn-icon:hover { background: var(--bg); }
+.card { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow); border: 1px solid var(--border); }
+input, select, textarea { font-family: 'DM Sans', sans-serif; font-size: 14px; }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--text); color: #fff; padding: 12px 24px; border-radius: 10px;
+  font-size: 14px; font-weight: 500; z-index: 9999; opacity: 0;
+  transition: opacity .25s, transform .25s; pointer-events: none;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.toast-error { background: var(--red); }
+#toast.toast-ok    { background: var(--green); }
+
+/* ══════════════════════════════════
+   AUTH PAGE
+══════════════════════════════════ */
+#auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: stretch;
+}
+.auth-left {
+  width: 52%;
+  background: linear-gradient(145deg, #0f172a 0%, #1e3a8a 50%, #1a56db 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 64px;
+  position: relative;
+  overflow: hidden;
+}
+.auth-left::before {
+  content: '';
+  position: absolute;
+  width: 600px; height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(59,130,246,.18) 0%, transparent 70%);
+  top: -150px; right: -150px;
+}
+.auth-left::after {
+  content: '';
+  position: absolute;
+  width: 400px; height: 400px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(16,185,129,.12) 0%, transparent 70%);
+  bottom: -100px; left: -100px;
+}
+.auth-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 64px; }
+.auth-logo-icon { width: 44px; height: 44px; background: var(--primary-light); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+.auth-logo-text { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: #fff; }
+.auth-hero h1 { font-family: 'Syne', sans-serif; font-size: 44px; font-weight: 800; color: #fff; line-height: 1.1; margin-bottom: 20px; }
+.auth-hero h1 span { color: #60a5fa; }
+.auth-hero p { color: rgba(255,255,255,.65); font-size: 16px; line-height: 1.7; max-width: 400px; margin-bottom: 48px; }
+.auth-features { display: flex; flex-direction: column; gap: 16px; }
+.auth-feature { display: flex; align-items: center; gap: 14px; }
+.auth-feature-icon { width: 36px; height: 36px; border-radius: 8px; background: rgba(255,255,255,.1); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.auth-feature p { color: rgba(255,255,255,.75); font-size: 14px; }
+
+.auth-right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 40px;
+  overflow-y: auto;
+}
+.auth-box { width: 100%; max-width: 480px; }
+.auth-tabs { display: flex; gap: 0; background: var(--bg); border-radius: 10px; padding: 4px; margin-bottom: 32px; }
+.auth-tab { flex: 1; padding: 10px; text-align: center; font-weight: 600; font-size: 14px; cursor: pointer; border-radius: 8px; color: var(--text-2); transition: all .18s; border: none; background: none; }
+.auth-tab.active { background: var(--surface); color: var(--primary); box-shadow: var(--shadow); }
+
+.form-group { margin-bottom: 16px; }
+.form-label { display: block; font-size: 13px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+.form-input { width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px; color: var(--text); background: var(--bg); transition: border-color .15s; outline: none; }
+.form-input:focus { border-color: var(--primary); background: var(--surface); box-shadow: 0 0 0 3px rgba(26,86,219,.08); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-hint { font-size: 12px; color: var(--text-3); margin-top: 5px; }
+
+/* ══════════════════════════════════
+   APP SHELL
+══════════════════════════════════ */
+#app-page { display: none; height: 100vh; }
+
+.sidebar {
+  width: 240px;
+  background: var(--sidebar-bg);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 100;
+}
+.sidebar-logo {
+  padding: 24px 20px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+}
+.sidebar-logo-icon { width: 34px; height: 34px; background: var(--primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 17px; }
+.sidebar-logo-text { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 800; color: #fff; }
+
+.sidebar-nav { flex: 1; padding: 16px 12px; }
+.nav-section { margin-bottom: 24px; }
+.nav-section-title { font-size: 10px; font-weight: 700; color: rgba(255,255,255,.3); letter-spacing: 1.2px; text-transform: uppercase; padding: 0 8px; margin-bottom: 8px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; color: var(--sidebar-text); font-size: 14px; font-weight: 500; cursor: pointer; transition: all .15s; margin-bottom: 2px; border: none; background: none; width: 100%; text-align: left; }
+.nav-item .nav-icon { font-size: 17px; width: 22px; flex-shrink: 0; }
+.nav-item:hover { background: rgba(255,255,255,.07); color: #e2e8f0; }
+.nav-item.active { background: var(--primary); color: #fff; }
+.nav-badge { margin-left: auto; background: var(--amber); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 99px; }
+
+.sidebar-user { padding: 16px 12px; border-top: 1px solid rgba(255,255,255,.07); }
+.user-card { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px; background: rgba(255,255,255,.06); }
+.user-avatar { width: 34px; height: 34px; border-radius: 8px; background: var(--primary); display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.user-info .user-name { font-size: 13px; font-weight: 600; color: #e2e8f0; line-height: 1; margin-bottom: 2px; }
+.user-info .user-role { font-size: 11px; color: rgba(255,255,255,.4); }
+
+/* MAIN */
+.main-area { margin-left: 240px; display: flex; flex-direction: column; min-height: 100vh; }
+.topnav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 28px; height: 60px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; position: sticky; top: 0; z-index: 50; }
+.topnav-left { display: flex; align-items: center; gap: 16px; }
+.topnav-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; }
+.topnav-right { display: flex; align-items: center; gap: 12px; }
+.logout-btn { padding: 7px 16px; border-radius: 8px; background: var(--bg); border: 1.5px solid var(--border); font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-2); }
+.logout-btn:hover { background: var(--red-light); color: var(--red); border-color: var(--red); }
+
+.content-area { flex: 1; overflow-y: auto; padding: 28px; }
+
+/* PANELS */
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ── STAT CARDS ── */
+.stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+.stat-card { background: var(--surface); border-radius: var(--radius-lg); padding: 20px; border: 1px solid var(--border); position: relative; overflow: hidden; }
+.stat-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; }
+.stat-card.blue::before   { background: var(--primary); }
+.stat-card.green::before  { background: var(--green); }
+.stat-card.amber::before  { background: var(--amber); }
+.stat-card.purple::before { background: var(--purple); }
+.stat-icon  { font-size: 24px; margin-bottom: 10px; }
+.stat-value { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; margin-bottom: 4px; }
+.stat-label { font-size: 13px; color: var(--text-2); font-weight: 500; }
+.stat-change { font-size: 12px; margin-top: 6px; font-weight: 600; }
+.stat-change.up   { color: var(--green); }
+.stat-change.down { color: var(--red); }
+
+/* ── TABLE ── */
+.table-card { background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden; }
+.table-header { padding: 18px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.table-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
+.table-actions { display: flex; align-items: center; gap: 10px; }
+.search-box { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; color: var(--text-2); }
+.search-box input { border: none; background: transparent; outline: none; width: 180px; font-size: 13px; }
+table { width: 100%; border-collapse: collapse; }
+th { padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 700; color: var(--text-3); background: var(--bg); border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: .5px; }
+td { padding: 14px 16px; font-size: 14px; border-bottom: 1px solid var(--border); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--bg); }
+.table-avatar { width: 32px; height: 32px; border-radius: 8px; background: var(--primary-bg); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: var(--primary); }
+.flex-cell { display: flex; align-items: center; gap: 10px; }
+
+/* ── EXPENSE FORM ── */
+.form-card { background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border); padding: 28px; }
+.form-card-title { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700; margin-bottom: 24px; display: flex; align-items: center; gap: 10px; }
+.form-card-icon { width: 36px; height: 36px; background: var(--primary-bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+
+/* ── EXPENSE CARDS ── */
+.expense-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.expense-card { background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border); padding: 20px; transition: box-shadow .18s; }
+.expense-card:hover { box-shadow: var(--shadow-md); }
+.expense-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+.expense-meta   { font-size: 12px; color: var(--text-3); margin-bottom: 4px; }
+.expense-amount { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; color: var(--text); }
+.expense-desc   { font-size: 14px; color: var(--text-2); margin: 10px 0; line-height: 1.5; }
+.expense-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 14px; border-top: 1px solid var(--border); }
+.expense-actions { display: flex; gap: 8px; }
+
+/* ── WORKFLOW CONFIG ── */
+.workflow-builder { display: flex; flex-direction: column; gap: 12px; }
+.workflow-step { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 16px; display: flex; align-items: center; gap: 16px; }
+.step-num { width: 30px; height: 30px; background: var(--primary); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0; }
+.step-arrow { color: var(--text-3); font-size: 18px; text-align: center; }
+.rule-tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: var(--purple-light); color: var(--purple); border-radius: 6px; font-size: 12px; font-weight: 600; margin: 4px 4px 4px 0; }
+
+/* ── TIMELINE ── */
+.timeline { position: relative; padding-left: 28px; }
+.timeline::before { content: ''; position: absolute; left: 9px; top: 0; bottom: 0; width: 2px; background: var(--border); }
+.timeline-item { position: relative; padding-bottom: 20px; }
+.timeline-dot { position: absolute; left: -24px; top: 3px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--surface); }
+.timeline-dot.green { background: var(--green); }
+.timeline-dot.amber { background: var(--amber); }
+.timeline-dot.blue  { background: var(--primary); }
+.timeline-dot.gray  { background: var(--text-3); }
+.timeline-label { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.timeline-meta  { font-size: 12px; color: var(--text-3); }
+
+/* ── ANALYTICS ── */
+.chart-bar-wrap { display: flex; align-items: flex-end; gap: 8px; height: 100px; }
+.chart-bar { flex: 1; border-radius: 4px 4px 0 0; background: var(--primary); opacity: .8; transition: opacity .18s; position: relative; }
+.chart-bar:hover { opacity: 1; }
+.chart-bar span { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); font-size: 11px; color: var(--text-3); white-space: nowrap; }
+
+/* ── COMMENT BOX ── */
+.comment-box { border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.comment-textarea { width: 100%; padding: 12px 14px; border: none; outline: none; resize: none; font-family: 'DM Sans', sans-serif; font-size: 14px; min-height: 80px; background: var(--bg); }
+.comment-footer { padding: 8px 12px; background: var(--bg); border-top: 1px solid var(--border); display: flex; justify-content: flex-end; }
+
+/* ── MODAL ── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.5); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.modal { background: var(--surface); border-radius: var(--radius-lg); padding: 36px; max-width: 480px; width: 92%; box-shadow: var(--shadow-lg); text-align: center; }
+.modal-icon { width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; font-size: 32px; }
+.modal-icon.success { background: var(--green-light); }
+.modal-icon.warning { background: var(--amber-light); }
+.modal h3 { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; margin-bottom: 10px; }
+.modal p  { color: var(--text-2); font-size: 14px; margin-bottom: 24px; }
+
+/* ── PAGE HEADER ── */
+.page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; }
+.page-header-text h2 { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+.page-header-text p  { font-size: 14px; color: var(--text-2); }
+
+/* ── PROGRESS ── */
+.progress-bar  { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 99px; background: var(--primary); transition: width .4s; }
+
+/* SELECT FILTER */
+.filter-select { padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: 'DM Sans', sans-serif; outline: none; background: var(--surface); cursor: pointer; }
+.filter-select:focus { border-color: var(--primary); }
+
+/* GRID */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+/* SPINNER */
+.spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* EMPTY STATE */
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-3); }
+.empty-state .empty-icon { font-size: 40px; margin-bottom: 12px; }
+.empty-state p { font-size: 14px; }
+</style>
+</head>
+<body>
+
+<!-- ══════ AUTH PAGE ══════ -->
+<div id="auth-page">
+  <div class="auth-left">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">💸</div>
+      <span class="auth-logo-text">ExpenseFlow</span>
+    </div>
+    <div class="auth-hero">
+      <h1>Smart <span>Expense</span><br>Management</h1>
+      <p>Streamline reimbursements with multi-level approvals, real-time tracking, and powerful analytics — all in one platform.</p>
+    </div>
+    <div class="auth-features">
+      <div class="auth-feature"><div class="auth-feature-icon">⚡</div><p>Multi-level approval workflows with conditional rules</p></div>
+      <div class="auth-feature"><div class="auth-feature-icon">🔒</div><p>Role-based access for Admin, Manager &amp; Employee</p></div>
+      <div class="auth-feature"><div class="auth-feature-icon">📊</div><p>Real-time analytics and reimbursement tracking</p></div>
+    </div>
+  </div>
+
+  <div class="auth-right">
+    <div class="auth-box">
+      <div style="margin-bottom:28px;">
+        <h2 style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;margin-bottom:6px;">Welcome back</h2>
+        <p style="color:var(--text-2);font-size:14px;">Sign in to your workspace or register a new company.</p>
+      </div>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchTab('login')">Sign In</button>
+        <button class="auth-tab" onclick="switchTab('signup')">Create Company</button>
+      </div>
+
+      <!-- ── LOGIN FORM ── -->
+      <div id="login-form">
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-input" placeholder="you@company.com" id="login-email">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" class="form-input" placeholder="Enter your password" id="login-pass"
+            onkeydown="if(event.key==='Enter') doLogin()">
+        </div>
+        <button class="btn btn-primary" id="login-btn" style="width:100%;justify-content:center;padding:12px;" onclick="doLogin()">
+          Sign In →
+        </button>
+        <div style="margin-top:16px;padding:14px;background:var(--primary-bg);border-radius:8px;font-size:13px;color:var(--primary);">
+          💡 Employees are created by their company Admin. If you don't have an account yet, ask your Admin to create one for you.
+        </div>
+      </div>
+
+      <!-- ── SIGNUP FORM (Admin / Company registration) ── -->
+      <div id="signup-form" class="hidden">
+        <div style="margin-bottom:20px;padding:14px;background:var(--amber-light);border-radius:8px;font-size:13px;color:var(--amber);">
+          ⚠️ This creates a new company account. You will be set as the Admin.
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Company Name</label>
+            <input type="text" class="form-input" placeholder="Acme Corp" id="su-company">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Country</label>
+            <input type="text" class="form-input" placeholder="India" id="su-country">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Base Currency Code</label>
+          <input type="text" class="form-input" placeholder="INR" id="su-currency" style="text-transform:uppercase;">
+          <div class="form-hint">3-letter ISO code — INR, USD, EUR, GBP, etc.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Your Name (Admin)</label>
+          <input type="text" class="form-input" placeholder="Full name" id="su-name">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-input" placeholder="admin@acme.com" id="su-email">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input type="password" class="form-input" placeholder="Strong password" id="su-pass">
+          </div>
+        </div>
+        <button class="btn btn-primary" id="signup-btn" style="width:100%;justify-content:center;padding:12px;" onclick="doSignup()">
+          Create Company →
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════ APP PAGE ══════ -->
+<div id="app-page" style="display:none;">
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">💸</div>
+      <span class="sidebar-logo-text">ExpenseFlow</span>
+    </div>
+
+    <!-- ADMIN NAV -->
+    <nav class="sidebar-nav" id="admin-nav" style="display:none;">
+      <div class="nav-section">
+        <div class="nav-section-title">Overview</div>
+        <button class="nav-item active" onclick="showPanel('admin-home')"><span class="nav-icon">🏠</span>Dashboard</button>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">Management</div>
+        <button class="nav-item" onclick="showPanel('manage-users')"><span class="nav-icon">👥</span>Manage Users</button>
+        <button class="nav-item" onclick="showPanel('create-user')"><span class="nav-icon">➕</span>Add User</button>
+        <button class="nav-item" onclick="showPanel('all-expenses')"><span class="nav-icon">📋</span>All Expenses</button>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">Configuration</div>
+        <button class="nav-item" onclick="showPanel('workflow-config')"><span class="nav-icon">⚙️</span>Approval Workflow</button>
+        <button class="nav-item" onclick="showPanel('analytics')"><span class="nav-icon">📊</span>Analytics</button>
+      </div>
+    </nav>
+
+    <!-- MANAGER NAV -->
+    <nav class="sidebar-nav" id="manager-nav" style="display:none;">
+      <div class="nav-section">
+        <div class="nav-section-title">Overview</div>
+        <button class="nav-item active" onclick="showPanel('manager-home')"><span class="nav-icon">🏠</span>Dashboard</button>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">Approvals</div>
+        <button class="nav-item" onclick="loadAndShowPending()"><span class="nav-icon">⏳</span>Pending Approvals</button>
+        <button class="nav-item" onclick="showPanel('approval-history')"><span class="nav-icon">📁</span>Approval History</button>
+      </div>
+    </nav>
+
+    <!-- EMPLOYEE NAV -->
+    <nav class="sidebar-nav" id="employee-nav" style="display:none;">
+      <div class="nav-section">
+        <div class="nav-section-title">Overview</div>
+        <button class="nav-item active" onclick="showPanel('emp-home')"><span class="nav-icon">🏠</span>Dashboard</button>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">Expenses</div>
+        <button class="nav-item" onclick="showPanel('submit-expense')"><span class="nav-icon">➕</span>Submit Expense</button>
+        <button class="nav-item" onclick="loadMyExpenses()"><span class="nav-icon">📄</span>My Expenses</button>
+      </div>
+    </nav>
+
+    <div class="sidebar-user">
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar">A</div>
+        <div class="user-info">
+          <div class="user-name" id="user-display-name">Loading…</div>
+          <div class="user-role" id="user-display-role">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main-area">
+    <div class="topnav">
+      <div class="topnav-left">
+        <div class="topnav-title" id="topnav-title">Dashboard</div>
+      </div>
+      <div class="topnav-right">
+        <button class="logout-btn" onclick="doLogout()">Sign Out</button>
+      </div>
+    </div>
+
+    <div class="content-area">
+
+      <!-- ═══ ADMIN HOME ═══ -->
+      <div class="panel active" id="panel-admin-home">
+        <div class="page-header">
+          <div class="page-header-text">
+            <h2>Admin Dashboard</h2>
+            <p id="admin-company-line">Loading…</p>
+          </div>
+          <button class="btn btn-primary" onclick="showPanel('create-user')">➕ Add User</button>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card blue"><div class="stat-icon">👥</div><div class="stat-value" id="stat-users">—</div><div class="stat-label">Total Users</div></div>
+          <div class="stat-card green"><div class="stat-icon">✅</div><div class="stat-value" id="stat-approved">—</div><div class="stat-label">Approved</div></div>
+          <div class="stat-card amber"><div class="stat-icon">⏳</div><div class="stat-value" id="stat-pending">—</div><div class="stat-label">Pending</div></div>
+          <div class="stat-card purple"><div class="stat-icon">❌</div><div class="stat-value" id="stat-rejected">—</div><div class="stat-label">Rejected</div></div>
+        </div>
+        <div class="table-card">
+          <div class="table-header"><div class="table-title">Recent Expenses</div><button class="btn btn-sm btn-secondary" onclick="loadAllExpenses()">View All</button></div>
+          <div id="admin-recent-expenses"><div class="empty-state"><div class="empty-icon">📄</div><p>Loading…</p></div></div>
+        </div>
+      </div>
+
+      <!-- ═══ MANAGE USERS ═══ -->
+      <div class="panel" id="panel-manage-users">
+        <div class="page-header">
+          <div class="page-header-text"><h2>Manage Users</h2><p>All active employees and managers in your company</p></div>
+          <button class="btn btn-primary" onclick="showPanel('create-user')">+ Add User</button>
+        </div>
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">Users</div>
+            <div class="search-box">🔍 <input placeholder="Search name or email..." id="user-search" oninput="filterUsers()"></div>
+          </div>
+          <div id="users-table-body">
+            <div class="empty-state"><div class="empty-icon">👥</div><p>Loading users…</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ CREATE USER ═══ -->
+      <div class="panel" id="panel-create-user">
+        <div class="page-header">
+          <div class="page-header-text"><h2>Add User</h2><p>Create an employee or manager account</p></div>
+        </div>
+        <div style="max-width:560px;">
+          <div class="form-card">
+            <div class="form-card-title"><div class="form-card-icon">👤</div>New User</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input type="text" class="form-input" id="cu-name" placeholder="e.g. Priya Sharma">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Role</label>
+                <select class="form-input" id="cu-role">
+                  <option value="employee">Employee</option>
+                  <option value="manager">Manager</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input type="email" class="form-input" id="cu-email" placeholder="user@company.com">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Temporary Password</label>
+              <input type="password" class="form-input" id="cu-pass" placeholder="They can change this later">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Assign Manager <span style="color:var(--text-3);font-weight:400">(optional)</span></label>
+              <select class="form-input" id="cu-manager">
+                <option value="">— None —</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                <input type="checkbox" id="cu-mgr-approver" style="accent-color:var(--primary);width:16px;height:16px;">
+                <span style="font-size:14px;font-weight:500;">Manager is first approver for this employee's expenses</span>
+              </label>
+            </div>
+            <button class="btn btn-primary" id="create-user-btn" style="width:100%;justify-content:center;" onclick="createUser()">Create User →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ ALL EXPENSES (admin) ═══ -->
+      <div class="panel" id="panel-all-expenses">
+        <div class="page-header">
+          <div class="page-header-text"><h2>All Expenses</h2><p>Every expense in your company</p></div>
+          <select class="filter-select" id="admin-exp-filter" onchange="loadAllExpenses()">
+            <option value="">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
+        <div class="table-card">
+          <div class="table-header"><div class="table-title">Expense Log</div></div>
+          <div id="all-expenses-body"><div class="empty-state"><div class="empty-icon">📄</div><p>Loading…</p></div></div>
+        </div>
+      </div>
+
+      <!-- ═══ WORKFLOW CONFIG ═══ -->
+      <div class="panel" id="panel-workflow-config">
+        <div class="page-header">
+          <div class="page-header-text"><h2>Approval Workflow</h2><p>Configure multi-level expense approval rules</p></div>
+          <button class="btn btn-primary" onclick="showPanel('create-rule')">+ Add Rule</button>
+        </div>
+        <div class="table-card">
+          <div class="table-header"><div class="table-title">Approval Rules</div></div>
+          <div id="rules-list"><div class="empty-state"><div class="empty-icon">⚙️</div><p>Loading rules…</p></div></div>
+        </div>
+      </div>
+
+      <!-- ═══ CREATE RULE ═══ -->
+      <div class="panel" id="panel-create-rule">
+        <div class="page-header">
+          <div class="page-header-text"><h2>Create Approval Rule</h2><p>Define who approves which expenses</p></div>
+        </div>
+        <div style="max-width:600px;">
+          <div class="form-card">
+            <div class="form-group">
+              <label class="form-label">Rule Name</label>
+              <input type="text" class="form-input" id="rl-name" placeholder="e.g. Above ₹10,000">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Rule Type</label>
+                <select class="form-input" id="rl-type">
+                  <option value="sequential">Sequential (all must approve)</option>
+                  <option value="percentage">Percentage consensus</option>
+                  <option value="specific">Specific approver override</option>
+                  <option value="hybrid">Hybrid (% or specific)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Threshold Amount (base currency)</label>
+                <input type="number" class="form-input" id="rl-threshold" placeholder="e.g. 10000 (leave blank for all)">
+              </div>
+            </div>
+            <div class="form-group" id="rl-pct-group" style="display:none;">
+              <label class="form-label">Percentage Required (%)</label>
+              <input type="number" class="form-input" id="rl-pct" placeholder="e.g. 60">
+            </div>
+            <div class="form-group">
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;" id="rl-override-group" style="display:none;">
+                <input type="checkbox" id="rl-override" style="accent-color:var(--primary);width:16px;height:16px;">
+                <span style="font-size:14px;font-weight:500;">Enable specific approver override</span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Approvers (in order)</label>
+              <div id="rule-approvers-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;"></div>
+              <select class="form-input" id="rule-add-approver">
+                <option value="">— Select approver to add —</option>
+              </select>
+              <button class="btn btn-sm btn-secondary" style="margin-top:8px;" onclick="addApproverToRule()">+ Add Approver</button>
+            </div>
+            <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="createRule()">Save Rule →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ ANALYTICS ═══ -->
+      <div class="panel" id="panel-analytics">
+        <div class="page-header">
+          <div class="page-header-text"><h2>Analytics Overview</h2><p id="analytics-subtitle">Loading…</p></div>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card blue"><div class="stat-icon">💰</div><div class="stat-value" id="an-total">—</div><div class="stat-label">Total Submitted</div></div>
+          <div class="stat-card green"><div class="stat-icon">✅</div><div class="stat-value" id="an-approved">—</div><div class="stat-label">Approved</div></div>
+          <div class="stat-card amber"><div class="stat-icon">⏳</div><div class="stat-value" id="an-pending">—</div><div class="stat-label">Pending</div></div>
+          <div class="stat-card purple"><div class="stat-icon">❌</div><div class="stat-value" id="an-rejected">—</div><div class="stat-label">Rejected</div></div>
+        </div>
+        <div class="table-card">
+          <div class="table-header"><div class="table-title">All Expenses</div></div>
+          <div id="analytics-exp-body"></div>
+        </div>
+      </div>
+
+      <!-- ═══ MANAGER HOME ═══ -->
+      <div class="panel" id="panel-manager-home">
+        <div class="page-header">
+          <div class="page-header-text"><h2>Manager Dashboard</h2><p id="mgr-subtitle">Loading…</p></div>
+          <button class="btn btn-primary" onclick="loadAndShowPending()">⏳ Review Pending</button>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card amber"><div class="stat-icon">⏳</div><div class="stat-value" id="mgr-stat-pending">—</div><div class="stat-label">Pending Approvals</div></div>
+          <div class="stat-card green"><div class="stat-icon">✅</div><div class="stat-value" id="mgr-stat-approved">—</div><div class="stat-label">Approved by You</div></div>
+          <div class="stat-card purple"><div class="stat-icon">📁</div><div class="stat-value" id="mgr-stat-history">—</div><div class="stat-label">Total Decisions</div></div>
+          <div class="stat-card blue"><div class="stat-icon">🏢</div><div class="stat-value" id="mgr-stat-company">—</div><div class="stat-label">Company</div></div>
+        </div>
+      </div>
+
+      <!-- ═══ PENDING APPROVALS ═══ -->
+      <div class="panel" id="panel-pending-approvals">
+        <div class="page-header">
+          <div class="page-header-text"><h2>Pending Approvals</h2><p id="pending-subtitle">Expenses awaiting your review</p></div>
+        </div>
+        <div id="pending-approvals-grid" class="expense-grid">
+          <div class="empty-state"><div class="empty-icon">⏳</div><p>Loading…</p></div>
+        </div>
+      </div>
+
+      <!-- ═══ APPROVAL HISTORY ═══ -->
+      <div class="panel" id="panel-approval-history">
+        <div class="page-header">
+          <div class="page-header-text"><h2>Approval History</h2><p>All decisions you've made</p></div>
+        </div>
+        <div class="table-card">
+          <div class="table-header"><div class="table-title">Past Decisions</div></div>
+          <div id="approval-history-body"><div class="empty-state"><div class="empty-icon">📁</div><p>Loading…</p></div></div>
+        </div>
+      </div>
+
+      <!-- ═══ EMPLOYEE HOME ═══ -->
+      <div class="panel" id="panel-emp-home">
+        <div class="page-header">
+          <div class="page-header-text"><h2>My Dashboard</h2><p id="emp-subtitle">Loading…</p></div>
+          <button class="btn btn-primary" onclick="showPanel('submit-expense')">➕ New Expense</button>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card blue"><div class="stat-icon">📄</div><div class="stat-value" id="emp-stat-total">—</div><div class="stat-label">Total Submitted</div></div>
+          <div class="stat-card green"><div class="stat-icon">✅</div><div class="stat-value" id="emp-stat-approved">—</div><div class="stat-label">Approved</div></div>
+          <div class="stat-card amber"><div class="stat-icon">⏳</div><div class="stat-value" id="emp-stat-pending">—</div><div class="stat-label">Awaiting Approval</div></div>
+          <div class="stat-card purple"><div class="stat-icon">❌</div><div class="stat-value" id="emp-stat-rejected">—</div><div class="stat-label">Rejected</div></div>
+        </div>
+        <div class="table-card">
+          <div class="table-header"><div class="table-title">Recent Submissions</div><button class="btn btn-sm btn-secondary" onclick="loadMyExpenses()">View All</button></div>
+          <div id="emp-recent-expenses"></div>
+        </div>
+      </div>
+
+      <!-- ═══ SUBMIT EXPENSE ═══ -->
+      <div class="panel" id="panel-submit-expense">
+        <div class="page-header">
+          <div class="page-header-text"><h2>Submit Expense</h2><p>Fill in details to request reimbursement</p></div>
+        </div>
+        <div style="max-width:600px;">
+          <div class="form-card">
+            <div class="form-card-title"><div class="form-card-icon">📋</div>New Expense Request</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Amount</label>
+                <input type="number" class="form-input" placeholder="0.00" id="exp-amount">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Currency</label>
+                <input type="text" class="form-input" placeholder="INR" id="exp-currency" style="text-transform:uppercase;" value="INR">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Date of Expense</label>
+              <input type="date" class="form-input" id="exp-date">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Category</label>
+              <select class="form-input" id="exp-cat">
+                <option value="">Select category</option>
+                <option>Travel</option>
+                <option>Meals &amp; Entertainment</option>
+                <option>Training &amp; Education</option>
+                <option>Equipment &amp; Supplies</option>
+                <option>Accommodation</option>
+                <option>Communication</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <textarea class="form-input" rows="3" placeholder="Brief description of the expense and business purpose…" id="exp-desc" style="resize:vertical;"></textarea>
+            </div>
+            <button class="btn btn-primary" id="submit-exp-btn" style="width:100%;justify-content:center;" onclick="submitExpense()">Submit for Approval →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ MY EXPENSES ═══ -->
+      <div class="panel" id="panel-my-expenses">
+        <div class="page-header">
+          <div class="page-header-text"><h2>My Expenses</h2><p>All submitted expense requests</p></div>
+          <div style="display:flex;gap:10px;">
+            <select class="filter-select" id="my-exp-filter" onchange="loadMyExpenses()">
+              <option value="">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+            <button class="btn btn-primary" onclick="showPanel('submit-expense')">➕ New</button>
+          </div>
+        </div>
+        <div class="table-card">
+          <div class="table-header"><div class="table-title">Expense History</div></div>
+          <div id="my-expenses-body"><div class="empty-state"><div class="empty-icon">📄</div><p>Loading…</p></div></div>
+        </div>
+      </div>
+
+    </div><!-- /content-area -->
+  </div><!-- /main-area -->
+</div><!-- /app-page -->
+
+<!-- SUCCESS / INFO MODAL -->
+<div class="modal-overlay hidden" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-icon success" id="modal-icon">✅</div>
+    <h3 id="modal-title">Done</h3>
+    <p  id="modal-body">Action completed.</p>
+    <button class="btn btn-primary" onclick="closeModal()" style="width:100%;justify-content:center;">OK</button>
+  </div>
+</div>
+
+<!-- DECIDE MODAL (approve / reject a step) -->
+<div class="modal-overlay hidden" id="decide-modal-overlay">
+  <div class="modal" style="text-align:left;">
+    <h3 style="margin-bottom:6px;" id="decide-title">Review Expense</h3>
+    <p style="margin-bottom:16px;font-size:13px;color:var(--text-3);" id="decide-subtitle"></p>
+    <div class="form-group">
+      <label class="form-label">Comment (optional)</label>
+      <textarea class="form-input" rows="3" id="decide-comment" placeholder="Add a note for the submitter…" style="resize:vertical;"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-green" style="flex:1;justify-content:center;" onclick="submitDecision('approved')">✓ Approve</button>
+      <button class="btn btn-red"   style="flex:1;justify-content:center;" onclick="submitDecision('rejected')">✗ Reject</button>
+      <button class="btn btn-secondary" onclick="closeDecideModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════ */
+let currentUser   = null;   // full /auth/me response
+let allUsersCache = [];     // cached for dropdowns + search
+let ruleApprovers = [];     // approvers added to new rule form
+let decidingStepId = null;  // step being decided in modal
+
+/* ═══════════════════════════════════════════════════════════
+   API HELPERS
+═══════════════════════════════════════════════════════════ */
+async function api(method, path, body) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include'
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res  = await fetch(path, opts);
+  const data = await res.json().catch(() => ({}));
+  return { ok: res.ok, status: res.status, data };
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════════════ */
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show toast-' + type;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className = '', 3000);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   AUTH — TABS
+═══════════════════════════════════════════════════════════ */
+function switchTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach((t, i) =>
+    t.classList.toggle('active', tab === 'login' ? i === 0 : i === 1));
+  document.getElementById('login-form').classList.toggle('hidden',  tab !== 'login');
+  document.getElementById('signup-form').classList.toggle('hidden', tab !== 'signup');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   AUTH — LOGIN  (POST /auth/login)
+═══════════════════════════════════════════════════════════ */
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  if (!email || !pass) { toast('Email and password are required', 'error'); return; }
+
+  const btn = document.getElementById('login-btn');
+  btn.innerHTML = '<span class="spinner"></span> Signing in…';
+  btn.disabled = true;
+
+  const { ok, data } = await api('POST', '/auth/login', { email, password: pass });
+  btn.innerHTML = 'Sign In →';
+  btn.disabled  = false;
+
+  if (!ok) { toast(data.error || 'Login failed', 'error'); return; }
+
+  currentUser = data;
+  enterApp(data);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   AUTH — SIGNUP  (POST /auth/signup)
+═══════════════════════════════════════════════════════════ */
+async function doSignup() {
+  const payload = {
+    company_name:  document.getElementById('su-company').value.trim(),
+    country:       document.getElementById('su-country').value.trim(),
+    currency_code: document.getElementById('su-currency').value.trim().toUpperCase(),
+    name:          document.getElementById('su-name').value.trim(),
+    email:         document.getElementById('su-email').value.trim(),
+    password:      document.getElementById('su-pass').value
+  };
+  for (const [k, v] of Object.entries(payload)) {
+    if (!v) { toast(`'${k.replace(/_/g,' ')}' is required`, 'error'); return; }
+  }
+
+  const btn = document.getElementById('signup-btn');
+  btn.innerHTML = '<span class="spinner"></span> Creating…';
+  btn.disabled  = true;
+
+  const { ok, data } = await api('POST', '/auth/signup', payload);
+  btn.innerHTML = 'Create Company →';
+  btn.disabled  = false;
+
+  if (!ok) { toast(data.error || 'Signup failed', 'error'); return; }
+
+  // Fetch full user profile then enter app
+  const me = await api('GET', '/auth/me');
+  if (me.ok) { currentUser = me.data; enterApp(me.data); }
+  else toast('Company created! Please sign in.', 'ok');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   AUTH — LOGOUT  (POST /auth/logout)
+═══════════════════════════════════════════════════════════ */
+async function doLogout() {
+  await api('POST', '/auth/logout');
+  currentUser = null;
+  allUsersCache = [];
+  document.getElementById('app-page').style.display  = 'none';
+  document.getElementById('auth-page').style.display = 'flex';
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-pass').value  = '';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   APP SHELL — Enter app after login
+═══════════════════════════════════════════════════════════ */
+function enterApp(user) {
+  document.getElementById('auth-page').style.display = 'none';
+  document.getElementById('app-page').style.display  = 'flex';
+
+  document.getElementById('user-display-name').textContent = user.name || user.email;
+  document.getElementById('user-display-role').textContent = capitalize(user.role);
+  document.getElementById('user-avatar').textContent = (user.name || 'U')[0].toUpperCase();
+
+  ['admin-nav','manager-nav','employee-nav'].forEach(id =>
+    document.getElementById(id).style.display = 'none');
+
+  if (user.role === 'admin') {
+    document.getElementById('admin-nav').style.display = 'block';
+    loadAdminDashboard();
+  } else if (user.role === 'manager') {
+    document.getElementById('manager-nav').style.display = 'block';
+    loadManagerDashboard();
+  } else {
+    document.getElementById('employee-nav').style.display = 'block';
+    loadEmployeeDashboard();
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   NAV
+═══════════════════════════════════════════════════════════ */
+function showPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const el = document.getElementById('panel-' + id);
+  if (el) el.classList.add('active');
+
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  const titles = {
+    'admin-home':'Dashboard','manage-users':'Manage Users','create-user':'Add User',
+    'all-expenses':'All Expenses','workflow-config':'Approval Workflow',
+    'create-rule':'Create Rule','analytics':'Analytics',
+    'manager-home':'Dashboard','pending-approvals':'Pending Approvals',
+    'approval-history':'Approval History',
+    'emp-home':'My Dashboard','submit-expense':'Submit Expense','my-expenses':'My Expenses'
+  };
+  document.getElementById('topnav-title').textContent = titles[id] || 'Dashboard';
+
+  // Lazy-load data on panel open
+  if (id === 'manage-users')       loadUsers();
+  if (id === 'all-expenses')       loadAllExpenses();
+  if (id === 'workflow-config')    loadRules();
+  if (id === 'create-rule')        populateApproverDropdown();
+  if (id === 'create-user')        loadManagersForDropdown();
+  if (id === 'analytics')          loadAnalytics();
+  if (id === 'approval-history')   loadApprovalHistory();
+  if (id === 'my-expenses')        loadMyExpenses();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ADMIN DASHBOARD
+═══════════════════════════════════════════════════════════ */
+async function loadAdminDashboard() {
+  showPanel('admin-home');
+
+  const company = currentUser.company || '';
+  const currency = currentUser.currency || '';
+  document.getElementById('admin-company-line').textContent =
+    `${company} · ${currency} · ${new Date().toLocaleDateString('en-IN',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}`;
+
+  // Load all expenses to compute stats
+  const { ok, data } = await api('GET', '/expenses/all');
+  if (!ok) return;
+
+  const approved = data.filter(e => e.status === 'approved').length;
+  const pending  = data.filter(e => e.status === 'pending').length;
+  const rejected = data.filter(e => e.status === 'rejected').length;
+
+  document.getElementById('stat-approved').textContent = approved;
+  document.getElementById('stat-pending').textContent  = pending;
+  document.getElementById('stat-rejected').textContent = rejected;
+
+  // User count
+  const usersRes = await api('GET', '/admin/users');
+  if (usersRes.ok) {
+    allUsersCache = usersRes.data;
+    document.getElementById('stat-users').textContent = usersRes.data.length;
+  }
+
+  // Recent 5 expenses
+  const recent = data.slice(0, 5);
+  document.getElementById('admin-recent-expenses').innerHTML =
+    recent.length ? renderExpenseTable(recent, currency, false) :
+    '<div class="empty-state"><div class="empty-icon">📄</div><p>No expenses yet.</p></div>';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ADMIN — USERS  (GET /admin/users)
+═══════════════════════════════════════════════════════════ */
+async function loadUsers() {
+  document.getElementById('users-table-body').innerHTML =
+    '<div class="empty-state"><div class="empty-icon">👥</div><p>Loading…</p></div>';
+  const { ok, data } = await api('GET', '/admin/users');
+  if (!ok) { toast('Could not load users', 'error'); return; }
+  allUsersCache = data;
+  renderUserTable(data);
+}
+
+function renderUserTable(users) {
+  if (!users.length) {
+    document.getElementById('users-table-body').innerHTML =
+      '<div class="empty-state"><div class="empty-icon">👥</div><p>No users yet. Add one above.</p></div>';
+    return;
+  }
+  let rows = users.map(u => `
+    <tr>
+      <td><div class="flex-cell">
+        <div class="table-avatar">${u.name[0].toUpperCase()}</div>
+        <div><div style="font-weight:600">${u.name}</div>
+        <div style="font-size:12px;color:var(--text-3)">${u.email}</div></div>
+      </div></td>
+      <td><span class="badge ${roleBadge(u.role)}">${capitalize(u.role)}</span></td>
+      <td style="font-size:13px;color:var(--text-2)">${u.manager || '—'}</td>
+      <td>
+        <select class="filter-select" style="font-size:12px" onchange="changeRole(${u.id},this.value)">
+          <option value="employee" ${u.role==='employee'?'selected':''}>Employee</option>
+          <option value="manager"  ${u.role==='manager'?'selected':''}>Manager</option>
+        </select>
+      </td>
+    </tr>`).join('');
+
+  document.getElementById('users-table-body').innerHTML = `
+    <table>
+      <thead><tr><th>User</th><th>Role</th><th>Manager</th><th>Change Role</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function filterUsers() {
+  const q = document.getElementById('user-search').value.toLowerCase();
+  renderUserTable(allUsersCache.filter(u =>
+    u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)));
+}
+
+async function changeRole(userId, newRole) {
+  const { ok, data } = await api('PUT', `/admin/users/${userId}/role`, { role: newRole });
+  if (ok) toast(`Role updated to ${newRole}`, 'ok');
+  else toast(data.error || 'Failed to update role', 'error');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ADMIN — CREATE USER  (POST /admin/users/create)
+═══════════════════════════════════════════════════════════ */
+async function loadManagersForDropdown() {
+  const { ok, data } = await api('GET', '/admin/users?role=manager');
+  if (!ok) return;
+  const sel = document.getElementById('cu-manager');
+  sel.innerHTML = '<option value="">— None —</option>' +
+    data.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+}
+
+async function createUser() {
+  const payload = {
+    name:                 document.getElementById('cu-name').value.trim(),
+    email:                document.getElementById('cu-email').value.trim(),
+    password:             document.getElementById('cu-pass').value,
+    role:                 document.getElementById('cu-role').value,
+    is_manager_approver:  document.getElementById('cu-mgr-approver').checked
+  };
+  const mid = document.getElementById('cu-manager').value;
+  if (mid) payload.manager_id = parseInt(mid);
+
+  if (!payload.name || !payload.email || !payload.password) {
+    toast('Name, email, and password are required', 'error'); return;
+  }
+
+  const btn = document.getElementById('create-user-btn');
+  btn.innerHTML = '<span class="spinner"></span> Creating…';
+  btn.disabled  = true;
+
+  const { ok, data } = await api('POST', '/admin/users/create', payload);
+  btn.innerHTML = 'Create User →';
+  btn.disabled  = false;
+
+  if (!ok) { toast(data.error || 'Failed to create user', 'error'); return; }
+
+  toast(`User created (ID: ${data.user_id})`, 'ok');
+  // Clear form
+  ['cu-name','cu-email','cu-pass'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('cu-mgr-approver').checked = false;
+  allUsersCache = []; // invalidate cache
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ADMIN — ALL EXPENSES  (GET /expenses/all)
+═══════════════════════════════════════════════════════════ */
+async function loadAllExpenses() {
+  showPanel('all-expenses');
+  const filter = document.getElementById('admin-exp-filter')?.value || '';
+  const path = '/expenses/all' + (filter ? `?status=${filter}` : '');
+  const { ok, data } = await api('GET', path);
+  const currency = currentUser.currency || '';
+  document.getElementById('all-expenses-body').innerHTML = ok && data.length
+    ? renderExpenseTable(data, currency, true)
+    : '<div class="empty-state"><div class="empty-icon">📄</div><p>No expenses found.</p></div>';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ADMIN — OVERRIDE  (POST /approvals/override/<id>)
+═══════════════════════════════════════════════════════════ */
+async function adminOverride(expenseId, decision) {
+  const comment = prompt(`Override to ${decision}? Add a comment (optional):`);
+  if (comment === null) return; // cancelled
+  const { ok, data } = await api('POST', `/approvals/override/${expenseId}`, { decision, comment });
+  if (ok) { toast(data.message, 'ok'); loadAllExpenses(); }
+  else toast(data.error || 'Override failed', 'error');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ADMIN — RULES  (GET /admin/rules)
+═══════════════════════════════════════════════════════════ */
+async function loadRules() {
+  const { ok, data } = await api('GET', '/admin/rules');
+  if (!ok) { document.getElementById('rules-list').innerHTML = '<div class="empty-state"><p>Failed to load rules.</p></div>'; return; }
+  if (!data.length) {
+    document.getElementById('rules-list').innerHTML =
+      '<div class="empty-state"><div class="empty-icon">⚙️</div><p>No rules yet. Create one above.</p></div>';
+    return;
+  }
+  const rows = data.map(r => `
+    <tr>
+      <td style="font-weight:600">${r.name}</td>
+      <td><span class="badge badge-purple">${r.rule_type}</span></td>
+      <td style="font-size:13px;color:var(--text-2)">${r.threshold_amount != null ? fmtAmt(r.threshold_amount, currentUser.currency) : 'All amounts'}</td>
+      <td style="font-size:13px;color:var(--text-2)">${r.approvers.map(a=>a.name).join(' → ')}</td>
+      <td><button class="btn btn-sm btn-red" onclick="deleteRule(${r.id})">Delete</button></td>
+    </tr>`).join('');
+
+  document.getElementById('rules-list').innerHTML = `
+    <table>
+      <thead><tr><th>Name</th><th>Type</th><th>Threshold</th><th>Approvers</th><th>Action</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+async function deleteRule(id) {
+  if (!confirm('Delete this rule?')) return;
+  const { ok, data } = await api('DELETE', `/admin/rules/${id}`);
+  if (ok) { toast('Rule deleted', 'ok'); loadRules(); }
+  else toast(data.error || 'Failed', 'error');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ADMIN — CREATE RULE  (POST /admin/rules/create)
+═══════════════════════════════════════════════════════════ */
+function populateApproverDropdown() {
+  const { ok } = { ok: allUsersCache.length > 0 };
+  if (!allUsersCache.length) {
+    api('GET', '/admin/users').then(r => {
+      if (r.ok) { allUsersCache = r.data; fillApproverDrop(); }
+    });
+  } else { fillApproverDrop(); }
+  ruleApprovers = [];
+  document.getElementById('rule-approvers-list').innerHTML = '';
+  // Show/hide pct field based on type
+  document.getElementById('rl-type').addEventListener('change', e => {
+    const show = ['percentage','hybrid'].includes(e.target.value);
+    document.getElementById('rl-pct-group').style.display = show ? 'block' : 'none';
+  });
+}
+
+function fillApproverDrop() {
+  const sel = document.getElementById('rule-add-approver');
+  sel.innerHTML = '<option value="">— Select approver to add —</option>' +
+    allUsersCache.filter(u => u.role !== 'employee')
+      .map(u => `<option value="${u.id}" data-name="${u.name}">${u.name} (${u.role})</option>`).join('');
+}
+
+function addApproverToRule() {
+  const sel  = document.getElementById('rule-add-approver');
+  const id   = parseInt(sel.value);
+  const name = sel.options[sel.selectedIndex]?.dataset?.name;
+  if (!id) return;
+  if (ruleApprovers.find(a => a.approver_id === id)) { toast('Already added', 'error'); return; }
+  ruleApprovers.push({ approver_id: id, sequence: ruleApprovers.length, _name: name });
+  const list = document.getElementById('rule-approvers-list');
+  const div = document.createElement('div');
+  div.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg);border-radius:8px;font-size:14px;';
+  div.innerHTML = `<span><strong>${ruleApprovers.length}.</strong> ${name}</span>
+    <button class="btn btn-sm btn-secondary" onclick="removeApprover(${id},this)">Remove</button>`;
+  list.appendChild(div);
+}
+
+function removeApprover(id, btn) {
+  ruleApprovers = ruleApprovers.filter(a => a.approver_id !== id);
+  btn.closest('div').remove();
+  // re-number sequences
+  ruleApprovers.forEach((a, i) => a.sequence = i);
+}
+
+async function createRule() {
+  const name = document.getElementById('rl-name').value.trim();
+  const type = document.getElementById('rl-type').value;
+  const thresh = document.getElementById('rl-threshold').value;
+  const pct    = document.getElementById('rl-pct').value;
+  const override = document.getElementById('rl-override').checked;
+
+  if (!name) { toast('Rule name is required', 'error'); return; }
+  if (!ruleApprovers.length) { toast('Add at least one approver', 'error'); return; }
+
+  const payload = {
+    name, rule_type: type,
+    threshold_amount: thresh ? parseFloat(thresh) : null,
+    percentage_required: pct ? parseFloat(pct) : null,
+    specific_approver_override: override,
+    approvers: ruleApprovers.map(a => ({ approver_id: a.approver_id, sequence: a.sequence }))
+  };
+
+  const { ok, data } = await api('POST', '/admin/rules/create', payload);
+  if (ok) { toast(`Rule created (ID: ${data.rule_id})`, 'ok'); showPanel('workflow-config'); }
+  else toast(data.error || 'Failed', 'error');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ANALYTICS
+═══════════════════════════════════════════════════════════ */
+async function loadAnalytics() {
+  const { ok, data } = await api('GET', '/expenses/all');
+  const currency = currentUser.currency || '';
+  document.getElementById('analytics-subtitle').textContent =
+    `${currentUser.company} · ${currency}`;
+  if (!ok) return;
+
+  const total    = data.length;
+  const approved = data.filter(e => e.status === 'approved');
+  const pending  = data.filter(e => e.status === 'pending');
+  const rejected = data.filter(e => e.status === 'rejected');
+  const sum = arr => arr.reduce((s, e) => s + (e.amount_in_base || e.amount || 0), 0);
+
+  document.getElementById('an-total').textContent    = total;
+  document.getElementById('an-approved').textContent = fmtAmt(sum(approved), currency);
+  document.getElementById('an-pending').textContent  = pending.length;
+  document.getElementById('an-rejected').textContent = fmtAmt(sum(rejected), currency);
+
+  document.getElementById('analytics-exp-body').innerHTML = ok && data.length
+    ? renderExpenseTable(data, currency, true)
+    : '<div class="empty-state"><p>No data.</p></div>';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MANAGER DASHBOARD
+═══════════════════════════════════════════════════════════ */
+async function loadManagerDashboard() {
+  showPanel('manager-home');
+  document.getElementById('mgr-subtitle').textContent =
+    `${currentUser.company} · ${currentUser.currency}`;
+  document.getElementById('mgr-stat-company').textContent = currentUser.company || '—';
+
+  const [pRes, hRes] = await Promise.all([
+    api('GET', '/approvals/pending'),
+    api('GET', '/approvals/history')
+  ]);
+  const pending  = pRes.ok  ? pRes.data  : [];
+  const history  = hRes.ok  ? hRes.data  : [];
+  const approved = history.filter(h => h.your_decision === 'approved');
+
+  document.getElementById('mgr-stat-pending').textContent  = pending.length;
+  document.getElementById('mgr-stat-approved').textContent = approved.length;
+  document.getElementById('mgr-stat-history').textContent  = history.length;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MANAGER — PENDING APPROVALS  (GET /approvals/pending)
+═══════════════════════════════════════════════════════════ */
+async function loadAndShowPending() {
+  showPanel('pending-approvals');
+  const grid = document.getElementById('pending-approvals-grid');
+  grid.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>Loading…</p></div>';
+
+  const { ok, data } = await api('GET', '/approvals/pending');
+  if (!ok || !data.length) {
+    grid.innerHTML = '<div class="empty-state"><div class="empty-icon">🎉</div><p>No pending approvals — you\'re all caught up!</p></div>';
+    document.getElementById('pending-subtitle').textContent = '0 expenses awaiting your review';
+    return;
+  }
+  document.getElementById('pending-subtitle').textContent = `${data.length} expense${data.length>1?'s':''} awaiting your review`;
+  grid.innerHTML = data.map(s => `
+    <div class="expense-card" id="step-card-${s.step_id}">
+      <div class="expense-card-top">
+        <div>
+          <div class="expense-meta">EXP-${s.expense_id} · ${s.submitted_by} · ${s.date}</div>
+          <div class="expense-amount">${fmtAmt(s.amount_in_base || s.amount, s.base_currency)}</div>
+        </div>
+        <span class="badge badge-pending">Pending</span>
+      </div>
+      <div style="background:var(--bg);border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="color:var(--text-3)">Category</span><span style="font-weight:600">${s.category}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span style="color:var(--text-3)">Rule</span><span style="font-weight:600">${s.rule_name}</span>
+        </div>
+      </div>
+      ${s.description ? `<div class="expense-desc">${s.description}</div>` : ''}
+      <div class="expense-footer">
+        <div style="font-size:12px;color:var(--text-3)">Step ${s.sequence + 1}</div>
+        <div class="expense-actions">
+          <button class="btn btn-sm btn-green" onclick="openDecideModal(${s.step_id},'${escHtml(s.submitted_by)}',${s.amount_in_base||s.amount},'${s.base_currency}')">✓ Approve</button>
+          <button class="btn btn-sm btn-red"   onclick="openDecideModal(${s.step_id},'${escHtml(s.submitted_by)}',${s.amount_in_base||s.amount},'${s.base_currency}')">✗ Reject</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DECIDE MODAL  (POST /approvals/decide/<step_id>)
+═══════════════════════════════════════════════════════════ */
+function openDecideModal(stepId, name, amount, currency) {
+  decidingStepId = stepId;
+  document.getElementById('decide-title').textContent   = `Review expense by ${name}`;
+  document.getElementById('decide-subtitle').textContent = `Amount: ${fmtAmt(amount, currency)}`;
+  document.getElementById('decide-comment').value = '';
+  document.getElementById('decide-modal-overlay').classList.remove('hidden');
+}
+
+function closeDecideModal() {
+  decidingStepId = null;
+  document.getElementById('decide-modal-overlay').classList.add('hidden');
+}
+
+async function submitDecision(decision) {
+  if (!decidingStepId) return;
+  const comment = document.getElementById('decide-comment').value.trim();
+  const { ok, data } = await api('POST', `/approvals/decide/${decidingStepId}`, { decision, comment });
+  closeDecideModal();
+  if (ok) {
+    toast(data.message, 'ok');
+    loadAndShowPending();
+  } else {
+    toast(data.error || 'Failed', 'error');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MANAGER — HISTORY  (GET /approvals/history)
+═══════════════════════════════════════════════════════════ */
+async function loadApprovalHistory() {
+  const { ok, data } = await api('GET', '/approvals/history');
+  const currency = currentUser.currency || '';
+  if (!ok || !data.length) {
+    document.getElementById('approval-history-body').innerHTML =
+      '<div class="empty-state"><div class="empty-icon">📁</div><p>No decisions yet.</p></div>';
+    return;
+  }
+  const rows = data.map(h => `
+    <tr>
+      <td style="font-size:13px;color:var(--primary);font-weight:600">EXP-${h.expense_id}</td>
+      <td><div class="flex-cell"><div class="table-avatar">${h.submitted_by[0]}</div>${h.submitted_by}</div></td>
+      <td style="font-weight:700">${fmtAmt(h.amount_in_base, currency)}</td>
+      <td>${h.category}</td>
+      <td><span class="badge ${badgeClass(h.your_decision)}">${capitalize(h.your_decision)}</span></td>
+      <td style="font-size:12px;color:var(--text-3)">${h.your_comment || '—'}</td>
+      <td><span class="badge ${badgeClass(h.final_status)}">${capitalize(h.final_status)}</span></td>
+    </tr>`).join('');
+
+  document.getElementById('approval-history-body').innerHTML = `
+    <table>
+      <thead><tr><th>ID</th><th>Employee</th><th>Amount</th><th>Category</th><th>Your Decision</th><th>Comment</th><th>Final Status</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   EMPLOYEE DASHBOARD
+═══════════════════════════════════════════════════════════ */
+async function loadEmployeeDashboard() {
+  showPanel('emp-home');
+  document.getElementById('emp-subtitle').textContent =
+    `${currentUser.name} · ${currentUser.company}`;
+
+  const { ok, data } = await api('GET', '/expenses/my');
+  const currency = currentUser.currency || '';
+  if (!ok) return;
+
+  const total    = data.length;
+  const approved = data.filter(e => e.status === 'approved').length;
+  const pending  = data.filter(e => e.status === 'pending').length;
+  const rejected = data.filter(e => e.status === 'rejected').length;
+
+  document.getElementById('emp-stat-total').textContent    = total;
+  document.getElementById('emp-stat-approved').textContent = approved;
+  document.getElementById('emp-stat-pending').textContent  = pending;
+  document.getElementById('emp-stat-rejected').textContent = rejected;
+
+  const recent = data.slice(0, 5);
+  document.getElementById('emp-recent-expenses').innerHTML = recent.length
+    ? renderExpenseTable(recent, currency, false)
+    : '<div class="empty-state"><div class="empty-icon">📄</div><p>No expenses yet.</p></div>';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   EMPLOYEE — MY EXPENSES  (GET /expenses/my)
+═══════════════════════════════════════════════════════════ */
+async function loadMyExpenses() {
+  showPanel('my-expenses');
+  const filter = document.getElementById('my-exp-filter')?.value || '';
+  const path = '/expenses/my' + (filter ? `?status=${filter}` : '');
+  const { ok, data } = await api('GET', path);
+  const currency = currentUser.currency || '';
+  document.getElementById('my-expenses-body').innerHTML = ok && data.length
+    ? renderExpenseTable(data, currency, false)
+    : '<div class="empty-state"><div class="empty-icon">📄</div><p>No expenses found.</p></div>';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   EMPLOYEE — SUBMIT EXPENSE  (POST /expenses/submit)
+═══════════════════════════════════════════════════════════ */
+async function submitExpense() {
+  const amount   = document.getElementById('exp-amount').value;
+  const currency = document.getElementById('exp-currency').value.trim().toUpperCase();
+  const date     = document.getElementById('exp-date').value;
+  const category = document.getElementById('exp-cat').value;
+  const desc     = document.getElementById('exp-desc').value.trim();
+
+  if (!amount || !currency || !date || !category) {
+    toast('Amount, currency, date and category are required', 'error'); return;
+  }
+
+  const btn = document.getElementById('submit-exp-btn');
+  btn.innerHTML = '<span class="spinner"></span> Submitting…';
+  btn.disabled  = true;
+
+  const { ok, data } = await api('POST', '/expenses/submit', {
+    amount: parseFloat(amount), currency, date, category, description: desc
+  });
+  btn.innerHTML = 'Submit for Approval →';
+  btn.disabled  = false;
+
+  if (!ok) { toast(data.error || 'Submission failed', 'error'); return; }
+
+  showModal('✅', 'Expense Submitted!',
+    `Expense #${data.expense_id} for ${fmtAmt(data.amount_in_base, data.base_currency)} is now pending approval.`);
+
+  // Clear form
+  ['exp-amount','exp-date','exp-desc'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('exp-cat').value = '';
+  document.getElementById('exp-currency').value = currentUser.currency || 'INR';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   HELPERS — RENDER TABLES
+═══════════════════════════════════════════════════════════ */
+function renderExpenseTable(expenses, currency, isAdmin) {
+  const rows = expenses.map(e => `
+    <tr>
+      <td style="font-size:13px;color:var(--primary);font-weight:600">EXP-${e.id}</td>
+      ${isAdmin ? `<td><div class="flex-cell"><div class="table-avatar">${(e.submitted_by||'?')[0]}</div>${e.submitted_by||'—'}</div></td>` : ''}
+      <td style="font-weight:700">${fmtAmt(e.amount_in_base || e.amount, currency)}</td>
+      <td>${e.category}</td>
+      <td><span class="badge ${badgeClass(e.status)}">${capitalize(e.status)}</span></td>
+      <td style="font-size:13px;color:var(--text-3)">${e.date || ''}</td>
+      ${isAdmin ? `
+        <td style="font-size:13px;color:var(--text-2)">${e.current_approver || '—'}</td>
+        <td>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-sm btn-green" onclick="adminOverride(${e.id},'approved')">✓</button>
+            <button class="btn btn-sm btn-red"   onclick="adminOverride(${e.id},'rejected')">✗</button>
+          </div>
+        </td>` : `<td style="font-size:13px;color:var(--text-2)">${e.current_approver || '—'}</td>`}
+    </tr>`).join('');
+
+  return `<table>
+    <thead><tr>
+      <th>ID</th>
+      ${isAdmin ? '<th>Submitted by</th>' : ''}
+      <th>Amount</th>
+      <th>Category</th>
+      <th>Status</th>
+      <th>Date</th>
+      <th>Current Approver</th>
+      ${isAdmin ? '<th>Override</th>' : ''}
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   HELPERS — MODAL
+═══════════════════════════════════════════════════════════ */
+function showModal(icon, title, body) {
+  document.getElementById('modal-icon').textContent  = icon;
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').textContent  = body;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.add('hidden');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   HELPERS — MISC
+═══════════════════════════════════════════════════════════ */
+function capitalize(s)   { return s ? s[0].toUpperCase() + s.slice(1) : ''; }
+function escHtml(s)      { return s.replace(/'/g, "\\'")}
+function badgeClass(s)   { return s === 'approved' ? 'badge-approved' : s === 'rejected' ? 'badge-rejected' : 'badge-pending'; }
+function roleBadge(r)    { return r === 'admin' ? 'badge-purple' : r === 'manager' ? 'badge-info' : 'badge-pending'; }
+function fmtAmt(n, cur)  {
+  if (n == null) return '—';
+  try {
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: cur || 'INR', maximumFractionDigits: 0 }).format(n);
+  } catch { return `${cur} ${Number(n).toLocaleString()}`; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BOOT — check if already logged in on page load
+═══════════════════════════════════════════════════════════ */
+(async () => {
+  const { ok, data } = await api('GET', '/auth/me');
+  if (ok) {
+    currentUser = data;
+    enterApp(data);
+  }
+  // Set today's date as default for expense form
+  document.getElementById('exp-date').valueAsDate = new Date();
+})();
+</script>
+</body>
+</html>
